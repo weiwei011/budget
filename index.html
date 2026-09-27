@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{--bg:#E4DED5;--card:#F2EDE6;--field:#FBF8F4;--line:#D6CCBF;--ink:#45403A;--muted:#7F766B;--sage:#7A9E8E;--sage-d:#557A6B;--warn:#A85A52}
 *{box-sizing:border-box}
@@ -381,21 +382,31 @@ function update(){
   renderAnnuity();renderEtf();save();
 }
 
-function reportEl(){
+function reportPages(){
   const c=calc(),d=new Date();
   const row=(a,b,x='')=>`<tr><td>${a}</td><td style="color:#7F766B">${x}</td><td>${b}</td></tr>`;
-  const blk=(t,body,avoid=true)=>`<div style="margin-top:22px;${avoid?'page-break-inside:avoid;break-inside:avoid':''}"><h2 style="font-size:20px;margin-bottom:8px">${t}</h2>${body}</div>`;
-  const el=document.createElement('div');
-  el.style.cssText='width:720px;padding:28px;background:#FBF8F4;color:#45403A';
-  el.innerHTML=`<h1 style="font-size:28px">月月記帳本</h1><p class="sub">${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日匯出</p>`+
+  const blk=(t,body)=>`<div style="margin-top:22px"><h2 style="font-size:20px;margin-bottom:8px">${t}</h2>${body}</div>`;
+  const page=html=>{const el=document.createElement('div');el.style.cssText='width:720px;padding:28px;background:#FBF8F4;color:#45403A';el.innerHTML=html;return el};
+  const date=`${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日匯出`;
+
+  // 第 1 頁：收入、支出、支出比例、餘額分配
+  const p1=page(
+    `<h1 style="font-size:28px">月月記帳本</h1><p class="sub">${date}</p>`+
     blk('收入',`<table>${row('薪資',fmt(state.salary))}${state.incomes.map(i=>row(esc(i.name||'未命名'),fmt(i.amt))).join('')}${row('<b>總收入</b>',`<b>${fmt(c.inc)}</b>`)}</table>`)+
     blk('支出',`<table>${state.expenses.map(e=>row(esc(e.name||'未命名'),fmt(e.amt),catOf(e))).join('')}${row('<b>總支出</b>',`<b>${fmt(c.exp)}</b>`)}</table>`)+
     blk('支出比例',`<div class="pie" style="justify-content:flex-start"><div class="donut">${donut(c.by)}<div class="c">本月支出<b>${fmt(c.exp)}</b></div></div><ul class="legend">${legendHTML(c)}</ul></div>`)+
-    blk('餘額分配',`<table>${row('本月結餘',`<b>${fmt(c.bal)}</b>`)}${row('緊急預備金',fmt(c.toE))}${row('每月小確幸',fmt(c.f))}${row('投資資金',fmt(c.v),c.over>0?`含預備金多出 ${fmt(c.over)}`:'')}</table><p class="hint">緊急預備金目標 ${state.ef.months} 個月，共 ${fmt(c.target)}；已存 ${fmt(c.saved)}（${c.pct.toFixed(1)}%）</p>`)+
-    blk(`年金試算（目標 ${fmt(state.an.target)}，年化 ${state.an.rate}%）`,`<table><thead><tr><th>每月存</th><th>年</th><th>月數</th><th>總投入</th><th>複利獲利</th></tr></thead><tbody>${$('#anBody').innerHTML}</tbody></table>`,false)+
+    blk('餘額分配',`<table>${row('本月結餘',`<b>${fmt(c.bal)}</b>`)}${row('緊急預備金',fmt(c.toE))}${row('每月小確幸',fmt(c.f))}${row('投資資金',fmt(c.v),c.over>0?`含預備金多出 ${fmt(c.over)}`:'')}</table><p class="hint">緊急預備金目標 ${state.ef.months} 個月，共 ${fmt(c.target)}；已存 ${fmt(c.saved)}（${c.pct.toFixed(1)}%）</p>`)
+  );
+
+  // 第 2 頁：年金試算 + ETF 排名
+  const p2=page(
+    `<h1 style="font-size:28px">年金試算</h1><p class="sub">${date}</p>`+
+    `<p class="hint" style="margin-top:12px">目標 ${fmt(state.an.target)}，已有本金 ${fmt(state.an.principal)}，年化 ${state.an.rate}%</p>`+
+    `<table style="margin-top:12px"><thead><tr><th>每月存</th><th>年</th><th>月數</th><th>總投入</th><th>複利獲利</th></tr></thead><tbody>${$('#anBody').innerHTML}</tbody></table>`+
     blk(`ETF 組合前 5 名（月存 ${fmt(state.etf.monthly)}）`,`<table>${combos().res.slice(0,5).map(r=>row(r.parts.map(([x,w])=>`${x.c} ${x.n} ${Math.round(w*100)}%`).join('<br>'),isFinite(r.n)?`約 ${(r.n/12).toFixed(1)} 年`:'難達標',`年化 ${r.ret.toFixed(1)}%，波動 ${Math.round(r.vol)}%`)).join('')}</table>`)+
-    '<p class="hint" style="margin-top:20px">ETF 報酬與波動為粗估假設，不代表未來表現。</p>';
-  return el;
+    '<p class="hint" style="margin-top:20px">ETF 報酬與波動為粗估假設，不代表未來表現。</p>'
+  );
+  return [p1,p2];
 }
 
 // 事件綁定
@@ -425,11 +436,23 @@ $('#etfMore').onclick=()=>{etfShow+=12;renderEtf()};
 
 $('#pdfBtn').onclick=async()=>{
   const btn=$('#pdfBtn');
-  if(typeof html2pdf==='undefined'){window.print();return}
+  if(typeof html2pdf==='undefined'||!window.jspdf){window.print();return}
   btn.disabled=true;btn.textContent='產生中…';
   try{
     await document.fonts.ready;
-    await html2pdf().set({margin:8,filename:`記帳_${ym()}.pdf`,image:{type:'jpeg',quality:.95},html2canvas:{scale:2,backgroundColor:'#FBF8F4'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(reportEl()).save();
+    const pdf=new jspdf.jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+    const W=210,H=297,M=8;
+    const pages=reportPages();
+    for(let i=0;i<pages.length;i++){
+      const canvas=await html2pdf().set({html2canvas:{scale:2,backgroundColor:'#FBF8F4'}}).from(pages[i]).toCanvas().get('canvas');
+      if(i>0)pdf.addPage();
+      pdf.setFillColor(251,248,244);pdf.rect(0,0,W,H,'F');
+      // 等比例縮放，保證每一頁剛好一張 A4
+      let w=W-2*M,h=w*canvas.height/canvas.width;
+      if(h>H-2*M){h=H-2*M;w=h*canvas.width/canvas.height}
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',(W-w)/2,M,w,h);
+    }
+    pdf.save(`記帳_${ym()}.pdf`);
   }catch(err){alert('PDF 產生失敗，改用列印：在列印畫面選「另存為 PDF」。');window.print()}
   finally{btn.disabled=false;btn.textContent='匯出 PDF'}
 };
