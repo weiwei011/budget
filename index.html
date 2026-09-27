@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4DED5">
+<title>月月記帳本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+:root{--bg:#E4DED5;--card:#F2EDE6;--field:#FBF8F4;--line:#D6CCBF;--ink:#45403A;--muted:#7F766B;--sage:#7A9E8E;--sage-d:#557A6B;--warn:#A85A52}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans TC",-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 12px calc(40px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:8px 6px 18px}
+h1,h2{font-family:"LXGW WenKai TC","Noto Sans TC",serif;margin:0;line-height:1.25}
+h1{font-size:30px}
+h2{font-size:22px;margin-bottom:14px}
+.sub,.hint{color:var(--muted);font-size:14px;margin:4px 0 0}
+section{background:var(--card);border-radius:20px;padding:18px 14px;margin-bottom:14px}
+input,select,button{font:inherit;color:inherit}
+input,select{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:9px 12px;width:100%;min-width:0}
+input.num{text-align:right;font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--sage-d);outline-offset:2px}
+button{cursor:pointer}
+.row{display:grid;grid-template-columns:1fr 112px 40px;gap:8px;align-items:center;margin-bottom:8px}
+.row label{color:var(--muted)}
+.exp{grid-template-areas:"name amt del" "cat cat cat";row-gap:6px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px dashed var(--line)}
+.exp .n{grid-area:name}.exp .a{grid-area:amt}.exp .del{grid-area:del}.exp select{grid-area:cat}
+select.cat{justify-self:start;width:auto;font-size:13px;padding:3px 10px;border-radius:999px;border-width:1.5px}
+.del{height:40px;border:1px solid var(--line);background:var(--field);border-radius:12px;color:var(--warn);font-size:20px;line-height:1}
+.add{width:100%;padding:11px;border:1.5px dashed #C4B8A9;border-radius:14px;background:transparent;color:var(--sage-d);font-weight:500;margin-top:4px}
+.btn{border:0;border-radius:12px;padding:10px 16px;background:var(--sage-d);color:#fff;font-weight:500}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin-top:12px;padding-top:12px;font-weight:700}
+.total b{font-size:20px;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:8px 0 12px;margin:0}
+.pie{display:flex;flex-wrap:wrap;align-items:center;gap:18px;justify-content:center}
+.donut{position:relative;width:180px;height:180px;flex:none}
+.donut .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
+.donut .c b{font-size:17px;color:var(--ink)}
+.legend{flex:1;min-width:200px;margin:0;padding:0;list-style:none}
+.legend li{display:grid;grid-template-columns:14px 3em 1fr 4em;gap:8px;align-items:center;padding:5px 0;font-variant-numeric:tabular-nums}
+.dot{width:12px;height:12px;border-radius:50%}
+.legend .amt{color:var(--muted);font-size:14px;text-align:right}
+.legend .pct{font-weight:700;text-align:right}
+.bal{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;margin:0 0 12px}
+.bal.neg{color:var(--warn)}
+.alloc{display:grid;gap:8px;margin-bottom:16px}
+.alloc div{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--field);border-radius:12px;padding:10px 12px;border-left:5px solid}
+.alloc small{color:var(--muted);display:block;font-size:13px}
+.alloc b{font-variant-numeric:tabular-nums;font-size:18px;white-space:nowrap}
+.box{background:var(--field);border-radius:14px;padding:14px}
+.seg,.chips{display:flex;flex-wrap:wrap;gap:8px}
+.seg button,.chips button{border:1px solid var(--line);background:var(--field);border-radius:999px;padding:6px 14px;font-size:15px}
+.seg button{flex:1}
+.seg [aria-pressed=true],.chips [aria-pressed=true]{background:var(--sage-d);border-color:var(--sage-d);color:#fff}
+.bar{height:10px;background:var(--bg);border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.bar i{display:block;height:100%;width:0;background:var(--sage);transition:width .4s}
+.field{display:grid;grid-template-columns:1fr 150px;gap:8px;align-items:center;margin-bottom:8px}
+.field label{color:var(--muted)}
+.label{color:var(--muted);font-size:14px;margin:14px 0 8px}
+.tbl{overflow-x:auto;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+th{color:var(--muted);font-weight:500;text-align:right;padding:6px;border-bottom:1px solid var(--line)}
+td{text-align:right;padding:8px 6px;border-bottom:1px solid #E6DFD6}
+th:first-child,td:first-child{text-align:left}
+td.y{color:var(--sage-d);font-weight:700}
+td.g{color:#8A6A3E}
+.combo{background:var(--field);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.combo.best{border:2px solid var(--sage)}
+.combo .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.combo h3{font-size:16px;margin:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tag{font-size:12px;background:var(--sage);color:#fff;border-radius:6px;padding:1px 6px}
+.combo p{margin:6px 0 0;font-size:13.5px;color:var(--muted)}
+.combo .ok{color:var(--sage-d);font-weight:700}
+.combo .no{color:var(--warn)}
+.combo .btn{padding:6px 10px;font-size:14px;white-space:nowrap}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media print{.no-print{display:none!important}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>月月記帳本</h1><p class="sub" id="today"></p></div>
+  <button class="btn no-print" id="pdfBtn">匯出 PDF</button>
+</header>
+
+<section>
+  <h2>收入</h2>
+  <div class="row"><label for="salary">薪資</label><input id="salary" class="num" type="number" inputmode="decimal" placeholder="0"><span></span></div>
+  <div id="incomeList"></div>
+  <button class="add no-print" id="addIncome">＋ 新增收入項目</button>
+  <div class="total"><span>總收入</span><b id="incTotal"></b></div>
+</section>
+
+<section>
+  <h2>支出</h2>
+  <div id="expenseList"></div>
+  <button class="add no-print" id="addExpense">＋ 新增支出項目</button>
+  <div class="total"><span>總支出</span><b id="expTotal"></b></div>
+</section>
+
+<section>
+  <h2>支出比例</h2>
+  <div class="pie">
+    <div class="donut"><div id="pieSvg"></div><div class="c">本月支出<b id="pieTotal"></b></div></div>
+    <ul class="legend" id="legend"></ul>
+  </div>
+  <p class="hint">類別會依項目名稱自動判斷，判斷不對可以在每個支出項目下方改。</p>
+</section>
+
+<section>
+  <h2>餘額分配</h2>
+  <p class="hint" style="margin:0">本月結餘</p>
+  <p class="bal" id="bal"></p>
+  <div class="alloc" id="alloc"></div>
+  <div class="box">
+    <strong>緊急預備金</strong>
+    <p class="label" style="margin-top:6px">要存幾個月的生活費</p>
+    <div class="seg" id="efMonths"><button data-m="6">6 個月</button><button data-m="9">9 個月</button><button data-m="12">12 個月</button></div>
+    <div class="field" style="margin-top:12px"><span style="color:var(--muted)">目標金額</span><b id="efTarget" style="text-align:right"></b></div>
+    <div class="field"><label for="efSaved">目前已存</label><input id="efSaved" class="num" type="number" inputmode="decimal" placeholder="0"></div>
+    <div class="bar"><i id="efBar"></i></div>
+    <p class="hint" id="efNote"></p>
+    <button class="btn no-print" id="efDeposit" style="width:100%;margin-top:10px"></button>
+  </div>
+</section>
+
+<section id="annuity">
+  <h2>年金試算</h2>
+  <div class="field"><label for="anTarget">目標總金額</label><input id="anTarget" data-an="target" class="num" type="number" inputmode="decimal"></div>
+  <div class="field"><label for="anPrincipal">已有本金</label><input id="anPrincipal" data-an="principal" class="num" type="number" inputmode="decimal"></div>
+  <div class="field"><label for="anRate">年化報酬 %</label><input id="anRate" data-an="rate" class="num" type="number" inputmode="decimal" step="0.1"></div>
+  <div class="field"><label for="anMin">月存下限</label><input id="anMin" data-an="min" class="num" type="number" inputmode="decimal"></div>
+  <div class="field"><label for="anMax">月存上限</label><input id="anMax" data-an="max" class="num" type="number" inputmode="decimal"></div>
+  <div class="field"><label for="anStep">級距</label><input id="anStep" data-an="step" class="num" type="number" inputmode="decimal"></div>
+  <button class="add no-print" id="anUseInv">用本月「投資資金」當月存上限</button>
+  <div class="tbl"><table><thead><tr><th>每月存</th><th>年</th><th>月數</th><th>總投入</th><th>複利獲利</th></tr></thead><tbody id="anBody"></tbody></table></div>
+</section>
+
+<section>
+  <h2>ETF 組合比較</h2>
+  <div class="field"><label for="etfYears">期望年限</label><input id="etfYears" class="num" type="number" inputmode="decimal"></div>
+  <div class="field"><label for="etfMonthly">比較月存</label><input id="etfMonthly" class="num" type="number" inputmode="decimal"></div>
+  <p class="label">市場範圍</p>
+  <div class="seg" id="etfScope"><button data-s="tw">台灣</button><button data-s="gl">全球</button><button data-s="all">全部比較</button></div>
+  <p class="label">納入類別（可複選）</p>
+  <div class="chips" id="etfCats"></div>
+  <p class="hint" id="etfInfo" style="margin-top:12px"></p>
+  <div id="etfList" style="margin-top:12px"></div>
+  <button class="add no-print" id="etfMore">再顯示 12 組</button>
+  <p class="hint">報酬與波動是依長期歷史粗估的假設值，不代表未來表現。代號與數字請到投信官網核對，可以在程式碼的 ETFS 清單裡修改。</p>
+</section>
+
+<section class="no-print">
+  <h2>資料</h2>
+  <p class="hint" style="margin:0 0 12px">資料自動存在這支手機的瀏覽器裡，不會上傳。換手機或清除瀏覽紀錄前，記得先備份。</p>
+  <div class="tools">
+    <button class="btn ghost" id="backupBtn">備份資料</button>
+    <button class="btn ghost" id="importBtn">匯入備份</button>
+    <button class="btn ghost" id="resetBtn" style="grid-column:1/-1;color:var(--warn)">清除全部資料</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+</section>
+</div>
+
+<script>
+const KEY='budget-book-v1';
+const CATS=['食','衣','住','行','娛樂','其他'];
+const COLOR={食:'#D2A36C',衣:'#C98B84',住:'#7A9E8E',行:'#86A7C0',娛樂:'#9B8FB5',其他:'#B5AA9C'};
+const KW={
+  食:['餐','食','飯','飲','咖啡','茶','早餐','午餐','晚餐','宵夜','外送','超市','菜','水果','零食','麵','便當'],
+  衣:['衣','裝','鞋','褲','服','帽','洗衣','包包','飾'],
+  住:['房','租','水電','電費','水費','瓦斯','管理費','網路','電信','手機','家具','家電','日用','居'],
+  行:['油','車','交通','停車','捷運','高鐵','台鐵','公車','計程','uber','保養','etag','機票'],
+  娛樂:['娛樂','電影','遊戲','旅遊','旅行','訂閱','netflix','spotify','youtube','ktv','唱歌','健身','書','演唱會','興趣','玩']
+};
+
+// ETF 假設值：r = 年化報酬%，v = 年化波動%，m = tw 台灣 / gl 全球（可自行修改）
+const ETFS=[
+  {c:'0050',n:'元大台灣50',cat:'市值型',m:'tw',r:10,v:19},
+  {c:'006208',n:'富邦台50',cat:'市值型',m:'tw',r:10,v:19},
+  {c:'00692',n:'富邦公司治理',cat:'市值型',m:'tw',r:9.5,v:18},
+  {c:'00850',n:'元大臺灣ESG永續',cat:'市值型',m:'tw',r:9.5,v:18},
+  {c:'0056',n:'元大高股息',cat:'高股息',m:'tw',r:8,v:16},
+  {c:'00878',n:'國泰永續高股息',cat:'高股息',m:'tw',r:8,v:15},
+  {c:'00919',n:'群益台灣精選高息',cat:'高股息',m:'tw',r:8.5,v:17},
+  {c:'00891',n:'中信關鍵半導體',cat:'產業主題',m:'tw',r:11,v:26},
+  {c:'00892',n:'富邦台灣半導體',cat:'產業主題',m:'tw',r:11,v:26},
+  {c:'00881',n:'國泰台灣5G+',cat:'產業主題',m:'tw',r:9.5,v:24},
+  {c:'00646',n:'元大S&P500',cat:'海外大盤',m:'gl',r:10,v:16},
+  {c:'00662',n:'富邦NASDAQ',cat:'海外大盤',m:'gl',r:12,v:21},
+  {c:'00757',n:'統一FANG+',cat:'產業主題',m:'gl',r:14,v:30},
+  {c:'00830',n:'國泰費城半導體',cat:'產業主題',m:'gl',r:13,v:30},
+  {c:'006205',n:'富邦上証',cat:'新興市場',m:'gl',r:3,v:23},
+  {c:'00885',n:'富邦越南',cat:'新興市場',m:'gl',r:5,v:25},
+  {c:'00652',n:'富邦印度',cat:'新興市場',m:'gl',r:8,v:21},
+  {c:'00712',n:'復華富時不動產',cat:'REITs',m:'gl',r:5,v:18},
+  {c:'00714',n:'群益道瓊美國地產',cat:'REITs',m:'gl',r:5,v:20},
+  {c:'00635U',n:'期元大S&P黃金',cat:'商品黃金',m:'gl',r:6,v:15},
+  {c:'00679B',n:'元大美債20年',cat:'公債',m:'gl',r:3,v:14},
+  {c:'00687B',n:'國泰20年美債',cat:'公債',m:'gl',r:3,v:14},
+  {c:'00694B',n:'富邦美債7-10年',cat:'公債',m:'gl',r:2.8,v:7},
+  {c:'00719B',n:'元大美債1-3年',cat:'公債',m:'gl',r:2.5,v:3},
+  {c:'00720B',n:'元大投資級公司債',cat:'公司債',m:'gl',r:4,v:10},
+  {c:'00751B',n:'元大AAA至A公司債',cat:'公司債',m:'gl',r:3.8,v:10},
+  {c:'00772B',n:'中信高評級公司債',cat:'公司債',m:'gl',r:4,v:10},
+  {c:'00870B',n:'元大15年EM主權債',cat:'新興債',m:'gl',r:4.5,v:12},
+  {c:'00749B',n:'凱基新興債10年+',cat:'新興債',m:'gl',r:4.5,v:12}
+];
+const ETF_CATS=['市值型','高股息','產業主題','海外大盤','新興市場','REITs','商品黃金','公債','公司債','新興債'];
+const GRP={市值型:'eq',高股息:'eq',產業主題:'eq',海外大盤:'eq',新興市場:'em',REITs:'reit',商品黃金:'gold',公債:'gov',公司債:'corp',新興債:'emb'};
+const KIND={eq:'股',em:'股',reit:'股',gold:'金',gov:'債',corp:'債',emb:'債'};
+const CORR={'em-em':.55,'em-eq':.6,'eq-reit':.65,'em-reit':.5,'reit-reit':.9,'eq-gold':.05,'em-gold':.2,'gold-reit':.1,'gold-gold':1,'eq-gov':0,'em-gov':.1,'gov-reit':.3,'gold-gov':.3,'gov-gov':.85,'corp-eq':.3,'corp-em':.35,'corp-reit':.45,'corp-gold':.25,'corp-gov':.75,'corp-corp':.95,'emb-eq':.45,'em-emb':.55,'emb-reit':.5,'emb-gold':.25,'emb-gov':.5,'corp-emb':.65,'emb-emb':.9};
+
+const DEFAULT={salary:0,incomes:[],expenses:[],ef:{months:6,saved:0,lastMonth:''},an:{target:25000000,principal:0,rate:8,min:10000,max:50000,step:5000},etf:{years:25,monthly:20000,scope:'all',cats:ETF_CATS.slice()}};
+
+const $=s=>document.querySelector(s);
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
+const fmt=n=>'NT$'+Math.round(num(n)).toLocaleString('zh-TW');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ym=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+function merge(s){const d=JSON.parse(JSON.stringify(DEFAULT));s=s||{};return{...d,...s,ef:{...d.ef,...s.ef},an:{...d.an,...s.an},etf:{...d.etf,...s.etf}}}
+let state=(()=>{try{return merge(JSON.parse(localStorage.getItem(KEY)))}catch(e){return merge()}})();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+
+function guess(name){const s=(name||'').toLowerCase();for(const c of ['食','衣','住','行','娛樂'])if(KW[c].some(k=>s.includes(k)))return c;return '其他'}
+const catOf=e=>e.cat&&e.cat!=='auto'?e.cat:guess(e.name);
+
+function renderIncome(){
+  const box=$('#incomeList');box.innerHTML='';
+  state.incomes.forEach((it,i)=>{
+    const r=document.createElement('div');r.className='row';
+    r.innerHTML=`<input placeholder="項目，例如兼職" aria-label="收入項目" value="${esc(it.name)}"><input class="num" type="number" inputmode="decimal" placeholder="0" aria-label="金額" value="${it.amt||''}"><button class="del no-print" aria-label="刪除這筆收入">×</button>`;
+    const [n,a,d]=r.children;
+    n.oninput=()=>{it.name=n.value;save()};
+    a.oninput=()=>{it.amt=num(a.value);update()};
+    d.onclick=()=>{state.incomes.splice(i,1);renderIncome();update()};
+    box.appendChild(r);
+  });
+}
+function renderExpenses(){
+  const box=$('#expenseList');box.innerHTML='';
+  if(!state.expenses.length){box.innerHTML='<p class="empty">還沒有支出項目，按下方按鈕新增。</p>';return}
+  state.expenses.forEach((it,i)=>{
+    const r=document.createElement('div');r.className='row exp';
+    const opts=CATS.map(c=>`<option value="${c}"${it.cat===c?' selected':''}>${c}</option>`).join('');
+    r.innerHTML=`<input class="n" placeholder="項目，例如餐費" aria-label="支出項目" value="${esc(it.name)}"><input class="num a" type="number" inputmode="decimal" placeholder="0" aria-label="金額" value="${it.amt||''}"><button class="del no-print" aria-label="刪除這筆支出">×</button><select class="cat" aria-label="類別"><option value="auto">自動：${guess(it.name)}</option>${opts}</select>`;
+    const [n,a,d,s]=r.children;
+    if(!it.cat||it.cat==='auto')s.value='auto';
+    const paint=()=>{s.options[0].text='自動：'+guess(it.name);s.style.borderColor=COLOR[catOf(it)]};
+    paint();
+    n.oninput=()=>{it.name=n.value;paint();update()};
+    a.oninput=()=>{it.amt=num(a.value);update()};
+    s.onchange=()=>{it.cat=s.value;paint();update()};
+    d.onclick=()=>{state.expenses.splice(i,1);renderExpenses();update()};
+    box.appendChild(r);
+  });
+}
+
+function calc(){
+  const inc=num(state.salary)+state.incomes.reduce((t,x)=>t+num(x.amt),0);
+  const exp=state.expenses.reduce((t,x)=>t+num(x.amt),0);
+  const by={};CATS.forEach(c=>by[c]=0);state.expenses.forEach(x=>by[catOf(x)]+=num(x.amt));
+  const bal=inc-exp,target=exp*state.ef.months,saved=num(state.ef.saved),gap=Math.max(0,target-saved);
+  let e=0,f=0,v=0,toE=0,over=0;
+  if(bal>0){e=bal*.5;f=bal*.3;v=bal*.2;toE=Math.min(e,gap);over=e-toE;v+=over}
+  return{inc,exp,by,bal,target,saved,gap,f,v,toE,over,pct:target>0?Math.min(100,saved/target*100):0};
+}
+
+function donut(by){
+  const cx=90,cy=90,R=86,r=56;let s='',a=-Math.PI/2;
+  const pos=CATS.filter(k=>by[k]>0),sum=pos.reduce((t,k)=>t+by[k],0);
+  const p=(t,d)=>`${(cx+d*Math.cos(t)).toFixed(2)} ${(cy+d*Math.sin(t)).toFixed(2)}`;
+  if(sum<=0)s='<circle cx="90" cy="90" r="71" fill="none" stroke="#DDD5CA" stroke-width="30"/>';
+  else pos.forEach(k=>{
+    const fr=by[k]/sum;
+    if(fr>.9999){s+=`<circle cx="90" cy="90" r="71" fill="none" stroke="${COLOR[k]}" stroke-width="30"/>`;return}
+    const b=a+fr*2*Math.PI,L=fr>.5?1:0;
+    s+=`<path d="M${p(a,R)}A${R} ${R} 0 ${L} 1 ${p(b,R)}L${p(b,r)}A${r} ${r} 0 ${L} 0 ${p(a,r)}Z" fill="${COLOR[k]}" stroke="#F2EDE6" stroke-width="2"/>`;
+    a=b;
+  });
+  return `<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="支出類別圓餅圖">${s}</svg>`;
+}
+const legendHTML=c=>CATS.map(k=>`<li><span class="dot" style="background:${COLOR[k]}"></span><span>${k}</span><span class="amt">${fmt(c.by[k])}</span><span class="pct">${c.exp>0?(c.by[k]/c.exp*100).toFixed(1):'0.0'}%</span></li>`).join('');
+
+function monthsTo(T,P,pmt,rate){
+  if(P>=T)return 0;
+  if(pmt<=0&&P<=0)return Infinity;
+  const r=rate/1200;
+  if(r>0){const n=Math.ceil(Math.log((T*r+pmt)/(P*r+pmt))/Math.log(1+r));return n>1200?Infinity:n}
+  let b=P;for(let n=1;n<=1200;n++){b=b*(1+r)+pmt;if(b>=T)return n}return Infinity;
+}
+function fv(P,pmt,rate,n){const r=rate/1200;if(r===0)return P+pmt*n;const g=Math.pow(1+r,n);return P*g+pmt*(g-1)/r}
+
+function renderAnnuity(){
+  const a=state.an,rows=[],T=num(a.target),P=num(a.principal),R=num(a.rate);
+  const step=Math.max(1,num(a.step)),lo=num(a.min),hi=Math.max(lo,num(a.max));
+  for(let p=lo;p<=hi&&rows.length<60;p+=step){
+    const n=monthsTo(T,P,p,R);
+    if(!isFinite(n)){rows.push(`<tr><td>${fmt(p)}</td><td colspan="4" style="text-align:left;color:var(--muted)">100 年內難達標</td></tr>`);continue}
+    const inv=p*n,g=fv(P,p,R,n)-P-inv;
+    rows.push(`<tr><td>${fmt(p)}</td><td class="y">${(n/12).toFixed(1)}</td><td>${n}</td><td>${fmt(inv)}</td><td class="g">${fmt(g)}</td></tr>`);
+  }
+  $('#anBody').innerHTML=rows.join('')||'<tr><td colspan="5">請設定月存上下限</td></tr>';
+}
+
+function corr(a,b){
+  if(a===b)return 1;
+  const ga=GRP[a.cat],gb=GRP[b.cat];
+  if(ga==='eq'&&gb==='eq')return a.m===b.m?.88:.6;
+  return CORR[[ga,gb].sort().join('-')]??.3;
+}
+const volLabel=v=>v<5?'低波動':v<10?'中低波動':v<16?'中波動':v<22?'中高波動':'高波動';
+function combos(){
+  const e=state.etf;
+  const list=ETFS.filter(x=>e.cats.includes(x.cat)&&(e.scope==='all'||x.m===e.scope));
+  const out=list.map(x=>[[x,1]]),W=[.8,.7,.6,.5,.4,.3,.2];
+  for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++)W.forEach(w=>out.push([[list[i],w],[list[j],1-w]]));
+  const T=num(state.an.target),P=num(state.an.principal),M=num(e.monthly),lim=num(e.years)*12;
+  const res=out.map(parts=>{
+    let ret=0,va=0;const mix={股:0,債:0,金:0};
+    parts.forEach(([x,w])=>{ret+=w*x.r;mix[KIND[GRP[x.cat]]]+=w});
+    parts.forEach(([x,w])=>parts.forEach(([y,u])=>va+=w*u*x.v*y.v*corr(x,y)));
+    const vol=Math.sqrt(va),n=monthsTo(T,P,M,ret);
+    return{parts,ret,vol,eff:ret/vol,n,ok:n<=lim,mix};
+  });
+  res.sort((a,b)=>a.ok!==b.ok?(a.ok?-1:1):a.ok?b.eff-a.eff:(a.n===b.n?0:a.n-b.n));
+  return{count:list.length,res};
+}
+function comboCard(r,best){
+  const title=r.parts.map(([x,w])=>`${x.c} ${Math.round(w*100)}%`).join(' ／ ');
+  const names=r.parts.map(([x,w])=>`${x.c} ${x.n} ${Math.round(w*100)}%`).join('、');
+  const mix=Object.entries(r.mix).filter(([,w])=>w>.001).map(([k,w])=>`${k} ${Math.round(w*100)}%`).join(' / ');
+  const rate=r.ret.toFixed(1);
+  const yrs=isFinite(r.n)?`<span class="${r.ok?'ok':'no'}">約 ${(r.n/12).toFixed(1)} 年達標</span>`:'<span class="no">100 年內難達標</span>';
+  return `<div class="combo${best?' best':''}"><div class="top"><h3>${title}${best?'<span class="tag">建議</span>':''}</h3><button class="btn no-print" data-rate="${rate}">套用 ${rate}%</button></div><p>${names}</p><p>年化 ${rate}%，波動約 ${Math.round(r.vol)}%（${volLabel(r.vol)}），效率比 ${r.eff.toFixed(2)}</p><p>${mix}，${yrs}</p></div>`;
+}
+let etfShow=12;
+function renderEtf(){
+  const e=state.etf;
+  document.querySelectorAll('#etfScope button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===e.scope));
+  document.querySelectorAll('#etfCats button').forEach(b=>b.setAttribute('aria-pressed',e.cats.includes(b.dataset.c)));
+  const {count,res}=combos();
+  $('#etfInfo').textContent=count?`納入 ${count} 檔標的，自動生成 ${res.length} 組配置。達標年數以年金試算的目標金額與已有本金計算。`:'請至少選一個類別，並確認市場範圍內有符合的標的。';
+  const warn=res.length&&!res[0].ok?'<p class="hint" style="margin:0 0 10px">期望年限內沒有組合能達標，可以提高比較月存或拉長年限。</p>':'';
+  $('#etfList').innerHTML=warn+res.slice(0,etfShow).map((r,i)=>comboCard(r,i===0&&r.ok)).join('');
+  $('#etfMore').hidden=res.length<=etfShow;
+  $('#etfList').querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>{
+    state.an.rate=+b.dataset.rate;$('#anRate').value=state.an.rate;update();
+    $('#annuity').scrollIntoView({behavior:'smooth'});
+  });
+}
+
+let last;
+function update(){
+  const c=last=calc();
+  $('#incTotal').textContent=fmt(c.inc);
+  $('#expTotal').textContent=fmt(c.exp);
+  $('#pieSvg').innerHTML=donut(c.by);
+  $('#pieTotal').textContent=fmt(c.exp);
+  $('#legend').innerHTML=legendHTML(c);
+  const b=$('#bal');b.textContent=fmt(c.bal);b.classList.toggle('neg',c.bal<0);
+  $('#alloc').innerHTML=c.bal<=0?'<p class="empty" style="text-align:left">本月沒有結餘，先檢查支出是否超過收入。</p>':
+    [['緊急預備金',c.gap<=0?'已存滿，這份改投入投資資金':c.over>0?`結餘的 50%，超過目標的 ${fmt(c.over)} 改投入投資`:'結餘的 50%',c.toE,'#7A9E8E'],
+     ['每月小確幸','結餘的 30%',c.f,'#C98B84'],
+     ['投資資金',c.over>0?`結餘的 20% ＋ 預備金多出的 ${fmt(c.over)}`:'結餘的 20%',c.v,'#D2A36C']]
+    .map(([t,s,v,col])=>`<div style="border-left-color:${col}"><span>${t}<small>${s}</small></span><b>${fmt(v)}</b></div>`).join('');
+  document.querySelectorAll('#efMonths button').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.m===state.ef.months));
+  $('#efTarget').textContent=fmt(c.target);
+  $('#efBar').style.width=c.pct+'%';
+  $('#efNote').textContent=c.target<=0?'先輸入支出，才能算出目標金額。':c.gap<=0?'緊急預備金已經存滿，之後的 50% 會全部轉到投資資金。':`已完成 ${c.pct.toFixed(1)}%，還差 ${fmt(c.gap)}${c.toE>0?`，照目前約 ${Math.ceil(c.gap/c.toE)} 個月存滿`:''}。`;
+  const dep=$('#efDeposit');dep.disabled=c.toE<=0;
+  dep.textContent=c.toE>0?`把本月的 ${fmt(c.toE)} 存進預備金`:'本月沒有要存進預備金的金額';
+  renderAnnuity();renderEtf();save();
+}
+
+function reportEl(){
+  const c=calc(),d=new Date();
+  const row=(a,b,x='')=>`<tr><td>${a}</td><td style="color:#7F766B">${x}</td><td>${b}</td></tr>`;
+  const blk=(t,body,avoid=true)=>`<div style="margin-top:22px;${avoid?'page-break-inside:avoid;break-inside:avoid':''}"><h2 style="font-size:20px;margin-bottom:8px">${t}</h2>${body}</div>`;
+  const el=document.createElement('div');
+  el.style.cssText='width:720px;padding:28px;background:#FBF8F4;color:#45403A';
+  el.innerHTML=`<h1 style="font-size:28px">月月記帳本</h1><p class="sub">${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日匯出</p>`+
+    blk('收入',`<table>${row('薪資',fmt(state.salary))}${state.incomes.map(i=>row(esc(i.name||'未命名'),fmt(i.amt))).join('')}${row('<b>總收入</b>',`<b>${fmt(c.inc)}</b>`)}</table>`)+
+    blk('支出',`<table>${state.expenses.map(e=>row(esc(e.name||'未命名'),fmt(e.amt),catOf(e))).join('')}${row('<b>總支出</b>',`<b>${fmt(c.exp)}</b>`)}</table>`)+
+    blk('支出比例',`<div class="pie" style="justify-content:flex-start"><div class="donut">${donut(c.by)}<div class="c">本月支出<b>${fmt(c.exp)}</b></div></div><ul class="legend">${legendHTML(c)}</ul></div>`)+
+    blk('餘額分配',`<table>${row('本月結餘',`<b>${fmt(c.bal)}</b>`)}${row('緊急預備金',fmt(c.toE))}${row('每月小確幸',fmt(c.f))}${row('投資資金',fmt(c.v),c.over>0?`含預備金多出 ${fmt(c.over)}`:'')}</table><p class="hint">緊急預備金目標 ${state.ef.months} 個月，共 ${fmt(c.target)}；已存 ${fmt(c.saved)}（${c.pct.toFixed(1)}%）</p>`)+
+    blk(`年金試算（目標 ${fmt(state.an.target)}，年化 ${state.an.rate}%）`,`<table><thead><tr><th>每月存</th><th>年</th><th>月數</th><th>總投入</th><th>複利獲利</th></tr></thead><tbody>${$('#anBody').innerHTML}</tbody></table>`,false)+
+    blk(`ETF 組合前 5 名（月存 ${fmt(state.etf.monthly)}）`,`<table>${combos().res.slice(0,5).map(r=>row(r.parts.map(([x,w])=>`${x.c} ${x.n} ${Math.round(w*100)}%`).join('<br>'),isFinite(r.n)?`約 ${(r.n/12).toFixed(1)} 年`:'難達標',`年化 ${r.ret.toFixed(1)}%，波動 ${Math.round(r.vol)}%`)).join('')}</table>`)+
+    '<p class="hint" style="margin-top:20px">ETF 報酬與波動為粗估假設，不代表未來表現。</p>';
+  return el;
+}
+
+// 事件綁定
+$('#salary').oninput=e=>{state.salary=num(e.target.value);update()};
+$('#addIncome').onclick=()=>{state.incomes.push({name:'',amt:0});renderIncome();update();$('#incomeList').lastElementChild.querySelector('input').focus()};
+$('#addExpense').onclick=()=>{state.expenses.push({name:'',amt:0,cat:'auto'});renderExpenses();update();$('#expenseList').lastElementChild.querySelector('input').focus()};
+$('#efMonths').onclick=e=>{const b=e.target.closest('button');if(!b)return;state.ef.months=+b.dataset.m;update()};
+$('#efSaved').oninput=e=>{state.ef.saved=num(e.target.value);update()};
+$('#efDeposit').onclick=()=>{
+  const c=calc();if(c.toE<=0)return;
+  if(state.ef.lastMonth===ym()&&!confirm('這個月已經存過一次了，確定要再存一次？'))return;
+  state.ef.saved=Math.round(num(state.ef.saved)+c.toE);state.ef.lastMonth=ym();
+  $('#efSaved').value=state.ef.saved;update();
+};
+document.querySelectorAll('[data-an]').forEach(el=>el.oninput=()=>{state.an[el.dataset.an]=num(el.value);update()});
+$('#anUseInv').onclick=()=>{
+  const step=Math.max(1,num(state.an.step)),v=Math.floor(last.v/step)*step;
+  if(v<=0||v<num(state.an.min)){alert(`本月投資資金是 ${fmt(last.v)}，低於月存下限，請先調低下限。`);return}
+  state.an.max=v;$('#anMax').value=v;update();
+};
+$('#etfCats').innerHTML=ETF_CATS.map(c=>`<button data-c="${c}">${c}</button>`).join('');
+$('#etfCats').onclick=e=>{const b=e.target.closest('button');if(!b)return;const cs=state.etf.cats,i=cs.indexOf(b.dataset.c);i>=0?cs.splice(i,1):cs.push(b.dataset.c);etfShow=12;update()};
+$('#etfScope').onclick=e=>{const b=e.target.closest('button');if(!b)return;state.etf.scope=b.dataset.s;etfShow=12;update()};
+$('#etfYears').oninput=e=>{state.etf.years=num(e.target.value);update()};
+$('#etfMonthly').oninput=e=>{state.etf.monthly=num(e.target.value);update()};
+$('#etfMore').onclick=()=>{etfShow+=12;renderEtf()};
+
+$('#pdfBtn').onclick=async()=>{
+  const btn=$('#pdfBtn');
+  if(typeof html2pdf==='undefined'){window.print();return}
+  btn.disabled=true;btn.textContent='產生中…';
+  try{
+    await document.fonts.ready;
+    await html2pdf().set({margin:8,filename:`記帳_${ym()}.pdf`,image:{type:'jpeg',quality:.95},html2canvas:{scale:2,backgroundColor:'#FBF8F4'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(reportEl()).save();
+  }catch(err){alert('PDF 產生失敗，改用列印：在列印畫面選「另存為 PDF」。');window.print()}
+  finally{btn.disabled=false;btn.textContent='匯出 PDF'}
+};
+$('#backupBtn').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
+  a.download=`記帳備份_${ym()}.json`;document.body.appendChild(a);a.click();a.remove();
+};
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{state=merge(JSON.parse(await f.text()));etfShow=12;init();alert('已匯入備份。')}
+  catch(err){alert('檔案格式不正確，請選擇先前備份的 .json 檔。')}
+  e.target.value='';
+};
+$('#resetBtn').onclick=()=>{if(confirm('確定清除全部資料？這個動作無法復原，建議先備份。')){state=merge();etfShow=12;init()}};
+
+function init(){
+  const d=new Date();$('#today').textContent=`${d.getFullYear()} 年 ${d.getMonth()+1} 月`;
+  $('#salary').value=state.salary||'';
+  $('#efSaved').value=state.ef.saved||'';
+  document.querySelectorAll('[data-an]').forEach(el=>el.value=state.an[el.dataset.an]);
+  $('#etfYears').value=state.etf.years;$('#etfMonthly').value=state.etf.monthly;
+  renderIncome();renderExpenses();update();
+}
+init();
+</script>
+</body>
+</html>
